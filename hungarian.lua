@@ -128,9 +128,11 @@ function Hungarian:create(configuration)
 	instance.N = n
 
 	---------------- min to max problem ----------------
-	for i = 1,n do
-		for j = 1,n do
-			instance.costMat[i][j] = -instance.costMat[i][j] 
+	if configuration.MAXorMIN == "MIN" then
+		for i = 1,n do
+			for j = 1,n do
+				instance.costMat[i][j] = -instance.costMat[i][j] 
+			end
 		end
 	end
 	----------------------------------------------------

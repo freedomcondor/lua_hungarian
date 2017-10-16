@@ -11,7 +11,8 @@ costMat = {	{1,4,5},
 			{5,8,8},
 			}
 
-hun = Hungarian:create{costMat = costMat
+hun = Hungarian:create{	costMat = costMat,
+						--MAXorMIN = "MIN"
 					  }
 
 

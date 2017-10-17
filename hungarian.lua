@@ -1,5 +1,6 @@
 -- table tool functions
 ----------------------------------------------------------------
+-- copy tables
 local function deepcopy(orig)
 	local orig_type = type(orig)
 	local copy
@@ -15,6 +16,7 @@ local function deepcopy(orig)
 	return copy
 end
 
+-- get the size of a table, no matter square or not
 local function getNM_Mat(Mat)
 	--[[
 	find the size of a Mat
@@ -74,25 +76,22 @@ function Queue:isEmpty()
 end
 
 ----------------------------------------------------------------
+
+----------------------------------------------------------------
 -- Hungarian starts
-	-- for the algorithm, please refer: https://www.topcoder.com/community/data-science/data-science-tutorials/assignment-problem-and-hungarian-algorithm/
+	-- for the algorithm, please refer to: https://www.topcoder.com/community/data-science/data-science-tutorials/assignment-problem-and-hungarian-algorithm/
 
 local Hungarian = 
 {
-	---[[
-	-- for users:
+	-- a Hungarian should have these data
 	costMat = {},
 	N = 0,
 	-- M = 0
-		-- no M currently
+		-- no M currently, consider only square
 
 	maxMatch = 0,
 	match_of_X = nil,
 	match_of_Y = nil,
-		-- a Hungarian should have these data
-	--]]
-
-	-- for algorithm
 }
 Hungarian.__index = Hungarian
 
@@ -102,13 +101,13 @@ function Hungarian:create(configuration)
 	setmetatable(instance,self)
 	self.__index = self
 		--the metatable of instance would be whoever owns this create
-		--so you can :  a = State:create();  b = a:create();  grandfather-father-son
+		--so you can :  a = Hungarian:create();  b = a:create();  grandfather-father-son
 
 	--Asserts
 		-- to be filled
 		-- check in the following body
 		-- maybe not square
-		-- maybe the square lacks a corner (this may not matter)
+		-- maybe the square lacks a corner (this matters, should fill in with 0, cannot be nil)
 	
 	-- Set costMat and size N
 	instance.costMat = deepcopy(configuration.costMat)
@@ -127,7 +126,7 @@ function Hungarian:create(configuration)
 	end
 	instance.N = n
 
-	---------------- min to max problem ----------------
+	---------------- min or max problem ----------------
 	if configuration.MAXorMIN == "MIN" then
 		for i = 1,n do
 			for j = 1,n do
@@ -138,16 +137,17 @@ function Hungarian:create(configuration)
 	----------------------------------------------------
 
 	-- Set labels and maxMatch
-	--local i,j -- in lua this is not necessary, the i in for is local to for
 	instance.maxMatch = 0
 	instance.match_of_X = {}
 	instance.match_of_Y = {}
 
-		--init lx,ly
+	--init lx,ly, which are the value labels of X and Y
 	instance.lx = {}; instance.ly = {}
-	for i = 1,n do instance.lx[i] = instance.costMat[1][1] - 99999999999 end  -- set to -INF
+	--local i,j -- in lua this is not necessary, the i in for is local to for
 	for i = 1,n do instance.ly[i] = 0 end
-	--lx is the max of his cost edge		-- for min problem
+		--label of Y is all 0
+	for i = 1,n do instance.lx[i] = instance.costMat[1][1] - 99999999999 end  -- set to -INF
+		--lx is the max of his cost edges		-- for max problem
 	for i = 1,n do 
 		for j = 1,n do
 			if instance.lx[i] < instance.costMat[i][j] then
@@ -155,7 +155,7 @@ function Hungarian:create(configuration)
 			end
 		end
 	end
-	--print("i = ",i) -- proof that i is local to for
+	--print("i = ",i) -- output nil -- proof that i is local to for
 
 	return instance
 end
@@ -175,7 +175,7 @@ function Hungarian:update_labels()
 		end
 	end
 
-										-------------------------
+										--debug------------------
 										--print("delta = ",delta)
 
 	-- update delta change
@@ -195,6 +195,7 @@ function Hungarian:update_labels()
 		if self.T[y] ~= true then slack[y] = slack[y] - delta  end --max
 	end
 end
+
 function Hungarian:add_to_tree(x,its_parent)
 	self.S[x] = true
 	self.parent_table[x] = its_parent
@@ -215,13 +216,13 @@ function Hungarian:aug()
 			1. try to find all his augmenting tree, 
 				if a path is found, goto the end, change the match and recur aug() 
 			2. if all the augmenting tree is set and no path found, update label
-			3. keep finding ??
+			3. keep finding, should find some new edges, if not, this is the answer
 	--]]
 
 	-- OK already?
 	if (self.maxMatch == self.N) then return 0 end
 	local N = self.N
-		-- write self.N everything could be annoying, use N directly
+		-- write self.N everytime could be annoying, use N directly
 
 	---------------------------------------------------------------------
 	-- Start to Build tree ----------------------------------------------
@@ -236,7 +237,7 @@ function Hungarian:aug()
 	self.S = {}
 	self.T = {}
 	self.parent_table = {}
-	local S = self.S
+	local S = self.S		-- frequently used, so no need of self.xx every time
 	local T = self.T
 	local parent_table = self.parent_table
 	local queue = Queue:create()
@@ -273,7 +274,7 @@ function Hungarian:aug()
 
 	local edgex = nil		-- used for record the edge if a good path is found
 	local edgey = nil
-	local flag = 0
+	local flag = 0	--flag = 1 mean found a good path
 	while true do
 
 										--------debug---------------
@@ -286,7 +287,7 @@ function Hungarian:aug()
 										--------debug---------------
 										--print("focal x",x)
 										--io.read()
-			-- for this new x, find all its edges
+			-- for this new x, search all its edges
 			flag = 0	--flag = 1 mean found a good path
 			for y = 1,N do
 										--------debug---------------
@@ -294,6 +295,7 @@ function Hungarian:aug()
 										--io.read()
 				-- search y, find a edge of equality between this new x and a new y (not in T)
 				if self.costMat[x][y] == self.lx[x] + self.ly[y] and T[y] ~= true then
+					-- don't write T[y] == false, because T[y] == nil initially
 										--------debug---------------
 										--print("focal y is equal")
 										--io.read()
@@ -307,13 +309,13 @@ function Hungarian:aug()
 					end  
 						-- a good path found, jump out of for y(search for y) 
 
-					-- y is assigned, add its x to tree
+					-- y is assigned, add the x of this y to tree
 					T[y] = true
 					queue:add(self.match_of_Y[y])
 					--S[x] = true   -- this is done in add_to_tree
 					self:add_to_tree(self.match_of_Y[y],x)
 				end
-			end	-- for y
+			end	-- end of for y
 
 			if flag == 1 then break end
 				-- a good path found jump out of while queue)
@@ -360,7 +362,7 @@ function Hungarian:aug()
 			if T[y] ~= true and slack[y] == 0 then
 				-- means a new equal edge is found, a new Y
 				if self.match_of_Y[y] == nil then
-					-- this Y is single
+					-- this Y is single, record and break
 										-----------------------------
 										--print("new edge found after changing label")
 										--io.read()
@@ -371,7 +373,7 @@ function Hungarian:aug()
 					edgex = x; edgey = y
 					break
 				else
-					-- this Y is not single
+					-- this Y is not single, add to tree
 					T[y] = true
 					if S[self.match_of_Y[y]] == nil then
 						queue:add(self.match_of_Y[y])
@@ -382,6 +384,7 @@ function Hungarian:aug()
 		end
 
 		if flag == 1 then break end
+		-- if a good path found, jump out, otherwise keep searching x
 	end	-- end of x searching (while true)
 
 	if flag == 1 then  -- a good path

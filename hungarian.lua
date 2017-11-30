@@ -16,6 +16,17 @@ local function deepcopy(orig)
 	return copy
 end
 
+local function copy(orig,n,m)
+	local copy = {}
+	for i = 1,n do
+		copy[i] = {}
+		for j = 1,m do
+			copy[i][j] = orig[i][j] or 0
+		end
+	end
+	return copy
+end
+
 -- get the size of a table, no matter square or not
 local function getNM_Mat(Mat)
 	--[[
@@ -34,6 +45,7 @@ local function getNM_Mat(Mat)
 		--presume Mat is like {{a,a},{a,a,a},{a,a}}
 
 	local maxM = 0
+	local i = 0
 	for ii,v in ipairs(Mat) do
 		i = ii
 		if type(v) ~= "table" then return -1,-1 else
@@ -108,10 +120,12 @@ function Hungarian:create(configuration)
 		-- check in the following body
 		-- maybe not square
 		-- maybe the square lacks a corner (this matters, should fill in with 0, cannot be nil)
+			-- with copy rather than deepcopy, can be nil
 	
 	-- Set costMat and size N
-	instance.costMat = deepcopy(configuration.costMat)
-	local n,m = getNM_Mat(instance.costMat)
+	--instance.costMat = deepcopy(configuration.costMat)
+	local n,m = getNM_Mat(configuration.costMat)
+	instance.costMat = copy(configuration.costMat,n,m)
 
 	-- check and get N
 	if n == -1 or m == -1 then
